@@ -1,5 +1,6 @@
 const {app, BrowserWindow, Notification, Tray, Menu} = require('electron');
 const WebSocket = require('ws');
+const axios = require('axios');
 
 const NTFY_TOPIC = 'swalert-phone-to-pc';
 
@@ -53,8 +54,24 @@ function startWebSocket() {
     });
 }
 
-app.whenReady().then(() => {
+async function fetchMissedMessages() {
+    try {
+        const response = await axios.get(`https://ntfy.sh/${NTFY_TOPIC}/json`);
+        const messages = response.data;
+        messages.forEach(msg => {
+            new Notification({
+                title: msg.title || 'Swalert Missed Alert',
+                body: msg.message || msg,
+            }).show();
+        });
+    } catch (e) {
+        console.error('Failed to fetch missed:', e.message);
+    }
+}
+
+app.whenReady().then(async () => {
     const win = createWindow();
     setupTray(win);
+    await fetchMissedMessages();
     startWebSocket();
 });
