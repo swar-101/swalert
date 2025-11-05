@@ -1,4 +1,14 @@
+# Core ignores
 node_modules/
 .idea/
 dist/
 *.log
+
+# Electron build/output folders
+electron-app/node_modules/
+electron-app/dist/
+electron-app/temp.txt
+
+# Cloudflare Worker build cache
+worker-relay/.wrangler/
+worker-relay/**/node_modules/

@@ -1,0 +1,21 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "swalert-forwarder",
+	"main": "src/index.js",
+	"compatibility_date": "2025-11-05",
+	"observability": {
+		"enabled": true
+	},
+	"kv_namespaces": [
+		{
+			"binding": "FORWARDER_STATE",
+			"id": "a96aa83a71bf4343b9a7b3b46f722370",
+			"preview_id": "50db8a8911e5467c8935e93137046808"
+		}
+	],
+	"triggers": {
+		"crons": [
+			"*/5 * * * *"
+		]
+	}
+}

@@ -1,0 +1,1 @@
+Kafka’s consumer offset and replay model, just without brokers or Zookeeper but distributed across Cloudflare’s edge.

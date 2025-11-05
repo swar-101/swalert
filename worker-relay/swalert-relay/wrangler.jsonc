@@ -1,0 +1,15 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "swalert-relay",
+	"main": "src/index.js",
+	"compatibility_date": "2025-11-05",
+	"observability": { "enabled": true },
+
+	"kv_namespaces": [
+		{
+			"binding": "RELAY",
+			"id": "63baca398f604036a3f52a2cec2682eb",
+			"preview_id": "eb7d53b9b3924e90a775655bf28d31dd"
+		}
+	]
+}
