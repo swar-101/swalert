@@ -93,11 +93,93 @@
     </div>
 </main>
 
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet" />
 <script>
     const refreshBtn = document.getElementById('refreshBtn');
     const sendBtn = document.getElementById('sendBtn');
     const msgInput = document.getElementById('msgInput');
+    const chatFeed = document.querySelector('.chat-feed');
 
+    const STORAGE_KEY = 'swalert_messages';
+
+    // === Utility: Detect and convert URLs ===
+    function linkify(text) {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.replace(urlRegex, (url) => {
+            const safeUrl = url.replace(/"/g, '&quot;');
+            return `<a href="${safeUrl}" target="_blank">${url}</a>`;
+        });
+    }
+
+    // === Utility: Create a meta icon + label based on source ===
+    function getSourceIcon(source) {
+        const icons = {
+            local: { icon: 'computer', label: 'Local' },
+            relay: { icon: 'cloud', label: 'Relay' },
+            mobile: { icon: 'smartphone', label: 'Mobile' },
+            web: { icon: 'language', label: 'Web' },
+        };
+        return icons[source.toLowerCase()] || icons.local;
+    }
+
+    // === Create alert-group DOM ===
+    function createAlertGroup(message, timestamp = Date.now(), source = 'local') {
+        const alertGroup = document.createElement('div');
+        alertGroup.className = 'alert-group content-width';
+
+        const alertCard = document.createElement('div');
+        alertCard.className = 'alert-card';
+        alertCard.innerHTML = `<p>${linkify(message).replace(/\n/g, '<br>')}</p>`;
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+
+        const timeStr = new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        const { icon, label } = getSourceIcon(source);
+
+        meta.innerHTML = `
+            <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle; opacity: 0.7;">${icon}</span>
+            <span style="opacity: 0.8;">${label}</span> · ${timeStr}
+        `;
+
+        alertGroup.appendChild(alertCard);
+        alertGroup.appendChild(meta);
+
+        return alertGroup;
+    }
+
+    // === Add alert to feed + save to localStorage ===
+    function addAlertToFeed(message, timestamp = Date.now(), source = 'local', save = true) {
+        const alertGroup = createAlertGroup(message, timestamp, source);
+
+        chatFeed.appendChild(alertGroup);
+
+        alertGroup.style.opacity = '0';
+        alertGroup.style.transform = 'translateY(8px)';
+        setTimeout(() => {
+            alertGroup.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            alertGroup.style.opacity = '1';
+            alertGroup.style.transform = 'translateY(0)';
+        }, 10);
+
+        chatFeed.scrollTo({ top: chatFeed.scrollHeight, behavior: 'smooth' });
+
+        if (save) {
+            const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            messages.push({ message, timestamp, source });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+        }
+    }
+
+    // === Load saved messages on startup ===
+    function loadSavedMessages() {
+        const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        for (const msg of messages) {
+            addAlertToFeed(msg.message, msg.timestamp, msg.source, false);
+        }
+    }
+
+    // === Event bindings ===
     refreshBtn.addEventListener('click', () => {
         window.swalertAPI.refresh();
     });
@@ -105,8 +187,10 @@
     sendBtn.addEventListener('click', () => {
         const message = msgInput.value.trim();
         if (message.length > 0) {
-            window.swalertAPI.sendMessage(message);
+            addAlertToFeed(message); // show instantly
+            window.swalertAPI.sendMessage(message); // send async
             msgInput.value = '';
+            msgInput.style.height = 'auto';
         }
     });
 
@@ -121,6 +205,8 @@
         msgInput.style.height = 'auto';
         msgInput.style.height = msgInput.scrollHeight + 'px';
     });
+
+    window.addEventListener('DOMContentLoaded', loadSavedMessages);
 </script>
 </body>
 </html>

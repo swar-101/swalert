@@ -1,14 +1,60 @@
 /* === SWALERT COMPONENTS.CSS === */
 
-/* --- Alert Cards --- */
+/* -----------------------------------------------------
+   🔹 GLOBAL UTILITIES
+----------------------------------------------------- */
+
+:root {
+    --content-max-width: 720px;
+    --content-horizontal-padding: 60px; /* half of total margin gap (120px total) */
+    --alert-bg: #1D211E;
+    --alert-hover-bg: #172626;
+    --meta-color: #989393;
+    --chat-bg: #4F4F4E;
+    --text-primary: #F5F5F5;
+    --radius-lg: 35px;
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --border-light: rgba(255, 255, 255, 0.1);
+    --blur-overlay: rgba(255, 255, 255, 0.04);
+}
+
+/* Shared layout constraint */
+.content-width {
+    width: calc(100% - (var(--content-horizontal-padding) * 2));
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+}
+
+@media (max-width: 820px) {
+    .content-width {
+        width: calc(100% - 60px);
+    }
+}
+
+/* -----------------------------------------------------
+   🔹 ALERT STACK
+----------------------------------------------------- */
+
+/* Container that holds one alert + its meta */
+.alert-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 40px; /* vertical spacing between alert groups */
+}
+
+.alert-group:last-child {
+    margin-bottom: 120px; /* extra breathing room above chatbar */
+}
+
+/* Card body */
 .alert-card {
-    width: min(98%, 720px);
-    background: #1D211E;
-    color: #F5F5F5;
+    width: 100%;
+    background: var(--alert-bg);
+    color: var(--text-primary);
     padding: 5px 16px;
-    border-radius: 35px;
-    /*box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);*/
-    /*border: 1px solid rgba(255, 255, 255, 0.05);*/
+    border-radius: var(--radius-lg);
     font-family: 'Ubuntu Mono', monospace;
     font-size: 15px;
     line-height: 1.45;
@@ -17,80 +63,65 @@
 }
 
 .alert-card:hover {
-    background: #1A1D28;
-    border-color: rgba(255, 255, 255, 0.12);
+    background: var(--alert-hover-bg);
 }
 
-/* --- Alert Group (consistent stacking) --- */
-.alert-group {
-    position: relative;
-    /*display: flex;*/
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 32px; /* equal spacing between alert blocks */
-}
-
-.alert-group:last-child {
-    margin-bottom: 120px; /* 🧊 leaves breathing room above chatbar */
-}
-
-.meta {
-
-}
-
-/* --- Meta (flush visual alignment, consistent) --- */
+/* Meta (timestamp + source line) */
 .alert-group .meta {
     position: absolute;
-    bottom: -18px;                /* ✅ sits just beneath card edge */
+    bottom: -22px; /* hugs card edge visually */
     left: 0;
-    width: min(98%, 720px);
-    text-align: left;
+    width: 100%;
     padding-left: 18px;
-    color: #989393;
-    font-size: 12.5px;
+    color: var(--meta-color);
     font-family: 'Ubuntu Mono', monospace;
-    line-height: 1;
+    font-size: 12.5px;
     letter-spacing: 0.01em;
+    line-height: 1;
     opacity: 1;
     pointer-events: none;
     transition: color 0.2s ease, opacity 0.2s ease;
 
-    /* ⚡ Ultra crisp text rendering */
+    /* pixel crisp rendering */
     -webkit-font-smoothing: none;
-    -moz-osx-font-smoothing: grayscale;
-    font-smooth: never;
     text-rendering: geometricPrecision;
+    font-smooth: never;
     image-rendering: pixelated;
     filter: contrast(120%) brightness(110%);
 }
 
-/* Hover linkage between card and meta */
+/* subtle hover interaction with meta */
 .alert-card:hover + .meta {
-    opacity: 20;
+    opacity: 0.9;
+    color: #bcb7b7;
 }
 
-/* --- Chat Bar --- */
+/* -----------------------------------------------------
+   🔹 CHAT BAR
+----------------------------------------------------- */
+
 .chatbar {
     position: fixed;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    width: min(98%, 720px);
+    /*width: calc(100% - (var(--content-horizontal-padding) * 2));*/
+    max-width: var(--content-max-width);
     display: flex;
     align-items: flex-end;
     gap: 10px;
     padding: 10px 16px;
-    background: #4F4F4E;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 35px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    background: var(--chat-bg);
+    /*border: 1px solid var(--border-light);*/
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
     z-index: 90;
 }
 
 .chatbar textarea {
     flex: 1;
     background: transparent;
-    color: #F5F5F5;
+    color: var(--text-primary);
     border: none;
     resize: none;
     font-family: 'Ubuntu Mono', monospace;
@@ -102,7 +133,7 @@
     outline: none;
 }
 
-/* Custom scrollbar in textarea */
+/* Scrollbar inside textarea */
 .chatbar textarea::-webkit-scrollbar {
     width: 8px;
 }
@@ -136,16 +167,19 @@
     opacity: 0.9;
 }
 
-/* --- Refresh Button (top-right) --- */
+/* -----------------------------------------------------
+   🔹 REFRESH BUTTON (HEADER)
+----------------------------------------------------- */
+
 .icon-refresh {
     position: absolute;
-    top: 16px;
-    right: 28px;
+    /*top: 16px;*/
+    right: 60px;
     width: 36px;
     height: 36px;
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--blur-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -166,14 +200,22 @@
     pointer-events: none;
 }
 
-.content-width {
-    width: calc(100% - 120px);   /* same effective inner margin as chatbar */
-    max-width: 720px;
-    /*margin: 3 auto;              !* ensures perfect horizontal centering *!*/
+.chatbar textarea::-webkit-scrollbar {
+    width: 0;
+    height: 0;
 }
 
-@media (max-width: 820px) {
-    .content-width {
-        width: calc(100% - 60px);  /* narrower gutters on smaller screens */
-    }
+.chatbar textarea {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer / Edge */
+}
+
+.chat-feed::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.chat-feed {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE */
 }
