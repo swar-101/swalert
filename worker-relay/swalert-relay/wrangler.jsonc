@@ -2,14 +2,35 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "swalert-relay",
 	"main": "src/index.js",
-	"compatibility_date": "2025-11-05",
+	"compatibility_date": "2025-11-06",
 	"observability": { "enabled": true },
 
+	// Dev
+	"vars": {
+		"MODE": "development"
+	},
+
+	// KV binding
 	"kv_namespaces": [
 		{
 			"binding": "RELAY",
 			"id": "63baca398f604036a3f52a2cec2682eb",
 			"preview_id": "eb7d53b9b3924e90a775655bf28d31dd"
 		}
-	]
+	],
+
+	// Prod
+	"env": {
+		"production": {
+			"vars": {
+				"MODE": "production"
+			},
+			"kv_namespaces": [
+				{
+					"binding": "RELAY",
+					"id": "63baca398f604036a3f52a2cec2682eb"
+				}
+			]
+		}
+	}
 }

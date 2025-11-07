@@ -1,0 +1,23 @@
+@font-face {
+    font-family: 'Pixelated Elegance';
+    src: local('Pixelated Elegance'),
+    url('fonts/PixelatedElegance-Regular.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Ubuntu Mono';
+    src: local('Ubuntu Mono'),
+    url('fonts/UbuntuMono-Regular.ttf') format('truetype');
+    font-display: swap;
+}
+
+:root {
+    --color-bg: #3F403E;
+    --color-surface: #212121;
+    --color-text-primary: #f5f5f5;
+    --color-text-secondary: #a1a1a1;
+    --color-accent: #60a5fa;
+    --color-title: #4F4F4E;
+    --radius-md: 20px;
+}

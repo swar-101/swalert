@@ -2,10 +2,17 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "swalert-forwarder",
 	"main": "src/index.js",
-	"compatibility_date": "2025-11-05",
-	"observability": {
-		"enabled": true
+	"compatibility_date": "2025-11-06",
+	"observability": { "enabled": true },
+
+	// Dev
+	"vars": {
+		"MODE": "development",
+		// Local URL for relay (adjust port if needed)
+		"RELAY_URL": "http://localhost:8788"
 	},
+
+	// KV bindings
 	"kv_namespaces": [
 		{
 			"binding": "FORWARDER_STATE",
@@ -13,9 +20,25 @@
 			"preview_id": "50db8a8911e5467c8935e93137046808"
 		}
 	],
+
+	// CRON runs every 5 mins
 	"triggers": {
-		"crons": [
-			"*/5 * * * *"
-		]
+		"crons": ["*/5 * * * *"]
+	},
+
+	// Prod
+	"env": {
+		"production": {
+			"vars": {
+				"MODE": "production",
+				"RELAY_URL": "https://swalert-relay-production.swalert.workers.dev"
+			},
+			"kv_namespaces": [
+				{
+					"binding": "FORWARDER_STATE",
+					"id": "a96aa83a71bf4343b9a7b3b46f722370"
+				}
+			]
+		}
 	}
 }

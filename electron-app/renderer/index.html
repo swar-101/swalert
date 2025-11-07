@@ -1,20 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Swalert Desktop</title>
-    <style>
-        body {
-            background-color: #111;
-            color: white;
-            font-family: sans-serif;
-            text-align: center;
-            margin-top: 40px;
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Swalert</title>
+
+    <!-- Load fonts dynamically for Electron -->
+    <script>
+        (function () {
+            const base = (location.href.match(/^file:.*\/(?:renderer\/)?/) || [location.href.replace(/\/[^/]+$/, '/')])[0];
+            const pixelFont = base + 'assets/fonts/PixelatedElegance-Regular.ttf';
+            const ubuntuFont = base + 'assets/fonts/UbuntuMono-Regular.ttf';
+            const s = document.createElement('style');
+            s.textContent = `
+        @font-face {
+          font-family: 'Pixelated Elegance';
+          src: url('${pixelFont}') format('truetype');
+          font-display: swap;
         }
-    </style>
+        @font-face {
+          font-family: 'Ubuntu Mono';
+          src: url('${ubuntuFont}') format('truetype');
+          font-display: swap;
+        }
+      `;
+            document.head.appendChild(s);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="./styles/theme.css"/>
+    <link rel="stylesheet" href="./styles/layout.css"/>
+    <link rel="stylesheet" href="./styles/components.css"/>
 </head>
+
 <body>
-<h2>Swalert Desktop Receiver</h2>
-<p>Listening for alerts from your phone...</p>
-<script src="index.js"></script>
+<main class="app">
+    <!-- Fixed Glassy Header -->
+    <header class="chat-header">
+        <h2>Swalert.</h2>
+        <button id="refreshBtn" class="icon-refresh" title="Refresh (Ctrl + R)">
+            <img src="./assets/icons/sync.svg" alt="refresh"/>
+        </button>
+    </header>
+
+    <!-- Scrollable Feed -->
+    <section class="chat-feed">
+
+        <div class="alert-group content-width">
+            <div class="alert-card">
+                <p>https://leetcode.com/problems/find-x-sum-of-all-k-long-subarrays-ii/</p>
+            </div>
+            <div class="meta">10th Oct 2025, 9:35 pm via 📱 over Wi-Fi</div>
+        </div>
+
+        <div class="alert-group content-width">
+            <div class="alert-card">
+                <p>
+                    WITH product_with_earliest_year_sale AS (<br />
+                    SELECT product_id, MIN(year)<br />
+                    GROUP BY product_id<br />
+                    HAVING year = MIN(year)<br />);
+                </p>
+            </div>
+            <div class="meta">tonight, 11:35 am via 💻 over Cloud</div>
+        </div>
+
+        <div class="alert-group content-width">
+            <div class="alert-card">
+                <p>
+                    The quick brown fox jumps over the lazy dog.<br />
+                    This is the link to<br />
+                    curl -i
+                    <a href="#">https://swalert-relay-production.swalert.workers.dev</a>
+                </p>
+            </div>
+            <div class="meta">just now via 📱 over Wi-Fi</div>
+        </div>
+
+    </section>
+
+    <!-- Floating Chat Bar -->
+    <div class="chatbar content-width">
+        <button id="attachBtn" class="icon-btn" title="Attach">
+            <img src="./assets/icons/attach.svg" alt="attach"/>
+        </button>
+
+        <textarea id="msgInput" placeholder="Paste or Drop almost anything!"></textarea>
+
+        <button id="sendBtn" class="icon-btn" title="Send">
+            <img src="./assets/icons/send.svg" alt="send"/>
+        </button>
+    </div>
+</main>
+
+<script>
+    const refreshBtn = document.getElementById('refreshBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const msgInput = document.getElementById('msgInput');
+
+    refreshBtn.addEventListener('click', () => {
+        window.swalertAPI.refresh();
+    });
+
+    sendBtn.addEventListener('click', () => {
+        const message = msgInput.value.trim();
+        if (message.length > 0) {
+            window.swalertAPI.sendMessage(message);
+            msgInput.value = '';
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key.toLowerCase() === 'r') {
+            e.preventDefault();
+            window.swalertAPI.refresh();
+        }
+    });
+
+    msgInput.addEventListener('input', () => {
+        msgInput.style.height = 'auto';
+        msgInput.style.height = msgInput.scrollHeight + 'px';
+    });
+</script>
 </body>
 </html>

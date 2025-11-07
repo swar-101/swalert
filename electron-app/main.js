@@ -1,150 +1,203 @@
-const {app, BrowserWindow, Notification, Tray, Menu} = require('electron');
-const WebSocket = require('ws');
-const axios = require('axios');
 
-const NTFY_TOPIC = 'swalert-phone-to-pc';
+const {app, BrowserWindow, Notification, Tray, Menu, ipcMain} = require("electron");
+const WebSocket = require("ws");
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+const {globalShortcut} = require('electron');
 
+// app.commandLine.appendSwitch('force-device-scale-factor', '1');
+
+// ✅ Import environment config
+const CONFIG = require("./config");
+const {NTFY_TOPIC, RELAY_URL, MODE} = CONFIG;
+
+console.log(`[Swalert] Running in ${MODE} mode`);
+console.log(`[Swalert] Using relay: ${RELAY_URL}`);
+
+const LAST_SEEN_FILE = path.join(app.getPath("userData"), "lastSeen.json");
 let tray = null;
 
+// --- Helper functions ---
+function showNotification(title, body) {
+    new Notification({title, body}).show();
+}
+
+function getLastSeen() {
+    try {
+        if (fs.existsSync(LAST_SEEN_FILE)) {
+            const data = JSON.parse(fs.readFileSync(LAST_SEEN_FILE, "utf8"));
+            return data.lastSeen || 0;
+        }
+    } catch (e) {
+        console.error("Failed to read lastSeen:", e);
+    }
+    return 0;
+}
+
+function setLastSeen(ts) {
+    try {
+        fs.writeFileSync(LAST_SEEN_FILE, JSON.stringify({lastSeen: ts}), "utf8");
+    } catch (e) {
+        console.error("Failed to save lastSeen:", e);
+    }
+}
+
+// --- Window + Tray setup ---
 function createWindow() {
     const win = new BrowserWindow({
         width: 400,
-        height: 300,
-        webPreferences: {preload: __dirname + 'preload.js'},
+        height: 400,
+        frame: false, // remove the native title bar
+        titleBarStyle: 'hidden',
+        backgroundColor: '#3F403E',
+
+        webPreferences: {
+            preload: path.join(__dirname, "preload.js"),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false,
+        },
     });
-    win.loadFile('renderer/index.html');
+
+    // win.loadFile("renderer/index.html");
+    win.loadURL(`file://${path.join(__dirname, "renderer", "index.html")}`);
+
+
     win.setMenu(null);
     return win;
 }
 
 function setupTray(win) {
-    tray = new Tray('renderer/icon.png');
+    tray = new Tray(path.join(__dirname, "renderer/icon.png"))
     const menu = Menu.buildFromTemplate([
-        {label : 'Open Swalert', click: () => win.show() },{
-        label : 'Quit', click: () => app.quit()
-        },
+        {label: "Refresh Messages", click: async () => await fetchMissedMessages()},
+        {label: "Open Swalert", click: () => win.show()},
+        {type: "separator"},
+        {label: "Quit", click: () => app.quit()},
     ]);
-    tray.setToolTip('Swalert Running');
+
+    tray.setToolTip("Swalert Running");
     tray.setContextMenu(menu);
 }
 
-function startWebSocket() {
-    console.log('Connecting to ntfy...');
-    const ws = new WebSocket(`wss://ntfy.sh/${NTFY_TOPIC}/ws`, {
-        headers: { 'Cache-Control': 'no-cache' }
-    });
-
-    ws.on('message', (data) => {
-        const msg = JSON.parse(data);
-        console.log('Received', msg);
-
-        new Notification({
-            title: msg.title || 'Swalert Incoming 🚨',
-            body: msg.message || msg,
-        }).show();
-    });
-
-    ws.on('close', () => {
-        console.log('Connection closed. Reconnecting in 5s...');
-        setTimeout(startWebSocket, 5000);
-    });
-
-    ws.on('error', (err) => {
-        console.error('Error: ', err.message);
-    });
-}
-
+// --- Core message sync logic ---
 async function fetchMissedMessages() {
-    const urlJson = `https://ntfy.sh/${NTFY_TOPIC}/json`;
-    console.log('[Swalert] Fetching missed messages from', urlJson);
-
-    // helper: try to parse text as JSON array or NDJSON
-    function parseJsonOrNdjson(text) {
-        text = String(text || '').trim();
-        if (!text) return [];
-        // try full-array JSON first
-        try {
-            const parsed = JSON.parse(text);
-            if (Array.isArray(parsed)) return parsed;
-        } catch (e) { /* not a JSON array */ }
-
-        // fallback: NDJSON (one json object per line)
-        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        const out = [];
-        for (const ln of lines) {
-            try {
-                out.push(JSON.parse(ln));
-            } catch (e) {
-                // ignore bad lines
-            }
-        }
-        return out;
-    }
-
-    // helper: crude HTML fallback scraper (no new deps)
-    function parseHtmlFallback(html) {
-        const s = String(html || '');
-        // try to find <pre> ... </pre> which sometimes contains NDJSON/JSON
-        const preMatch = s.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
-        if (preMatch && preMatch[1]) {
-            return parseJsonOrNdjson(preMatch[1]);
-        }
-
-        // otherwise try to extract <li> blocks or other message-like nodes
-        const liMatches = [...s.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)];
-        if (liMatches.length) {
-            return liMatches.map((m, i) => {
-                // strip tags from innerHTML
-                const inner = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-                return { id: `html-${i}-${Date.now()}`, title: undefined, message: inner };
-            });
-        }
-
-        // last-ditch: try any text nodes that look like JSON lines
-        const textOnly = s.replace(/<[^>]+>/g, '\n').replace(/\s+\n\s+/g, '\n').trim();
-        return parseJsonOrNdjson(textOnly);
-    }
+    const lastSeen = getLastSeen();
+    console.log(`[Swalert] Last seen: ${lastSeen}`);
 
     try {
-        // Try GET as text (avoid axios auto-stream behavior)
-        const res = await axios.get(urlJson, {
-            responseType: 'text',
-            timeout: 7000,
-            validateStatus: () => true, // handle non-2xx gracefully
+        const res = await axios.get(RELAY_URL, {
+            params: {topic: NTFY_TOPIC, since: lastSeen},
         });
-
-        const text = String(res.data || '').trim();
-        let messages = parseJsonOrNdjson(text);
-
-        // if nothing useful, try HTML fallback
-        if (!messages || messages.length === 0) {
-            messages = parseHtmlFallback(res.data);
+        let messages = res.data;
+        if (!Array.isArray(messages)) {
+            console.warn('[Swalert] Unexpected response format:', messages);
+            messages = [];
         }
 
-        if (!messages || messages.length === 0) {
-            console.log('[Swalert] No missed messages found (backlog empty or not available).');
+        if (messages.length === 0) {
+            console.log("[Swalert] No new messages.");
             return;
         }
 
-        console.log(`[Swalert] Found ${messages.length} backlog messages (showing them).`);
+        messages.sort((a, b) => a.time - b.time);
+        console.log(`[Swalert] ${messages.length} new messages.`);
+
         for (const msg of messages) {
-            // defensive access: handle different shapes
-            const title = msg && (msg.title || msg.t || msg.head) || 'Swalert Missed Alert';
-            const body = msg && (msg.message || msg.msg || msg.body || (typeof msg === 'string' ? msg : undefined)) || '(no body)';
-            new Notification({ title, body }).show();
+            showNotification(msg.title || "Swalert Sync ⚡", msg.body || "[No content]");
+            setLastSeen(msg.time);
         }
+
+        console.log("[Swalert] Sync complete.");
     } catch (err) {
-        // safe, non-throwing failure mode — log and continue
-        console.error('[Swalert] Failed to fetch missed:', err && err.message ? err.message : err);
+        console.error("[Swalert] Error fetching missed messages:", err.message);
     }
 }
 
+// --- Live updates via ntfy websocket ---
+function startWebSocket() {
+    console.log("[Swalert] Connecting to ntfy...");
+    const ws = new WebSocket(`wss://ntfy.sh/${NTFY_TOPIC}/ws`, {
+        headers: {"Cache-Control": "no-cache"},
+    });
+
+    ws.on("message", (data) => {
+        try {
+            const msg = JSON.parse(data);
+            console.log("Received:", msg);
+
+            showNotification(msg.title || "Swalert Incoming 🚨", msg.message || JSON.stringify(msg));
+        } catch (e) {
+            console.error("Bad WS message:", e);
+        }
+    });
+
+    ws.on("close", () => {
+        console.log("[Swalert] Connection closed. Reconnecting in 5s...");
+        setTimeout(startWebSocket, 5000);
+    });
+
+    ws.on("error", (err) => {
+        console.error("[Swalert] WebSocket error:", err.message);
+    });
+}
+
+// --- IPC bindings ---
+ipcMain.on("refresh-messages", async () => {
+    console.log("[Swalert] Manual refresh requested");
+    await fetchMissedMessages();
+});
+
+ipcMain.on("send-message", async (event, msgBody) => {
+    console.log(`[Swalert] Sending message: ${msgBody}`);
+
+    try {
+        await axios.post(`${RELAY_URL}?topic=${NTFY_TOPIC}`, {
+            title: "User Message",
+            body: msgBody,
+            sender: "ElectronApp",
+        });
+        console.log("[Swalert] Message sent.");
+    } catch (err) {
+        console.error("[Swalert] Failed to send message:", err.message);
+    }
+});
+
+app.commandLine.appendSwitch('allow-file-access-from-files');
+
+// --- App startup ---
 app.whenReady().then(async () => {
     const win = createWindow();
     setupTray(win);
-    console.log('[Swalert] App ready. Fetching missed messages...');
-    await fetchMissedMessages();
-    console.log('[Swalert] Missed messages done. Starting live stream...');
+    console.log('[Swalert Dev] Press Ctrl + Shift + R to reload UI');
 
+    globalShortcut.register('CommandOrControl+Shift+I', () => {
+        const focused = BrowserWindow.getFocusedWindow();
+        if (focused) focused.webContents.toggleDevTools();
+    });
+
+    globalShortcut.register('CommandOrControl+Shift+R', () => {
+        const [win] = BrowserWindow.getAllWindows();
+        if (win) {
+            console.log('[Swalert Dev] Reloading renderer...');
+            win.reload(); // ✅ reloads UI instantly
+        }
+    });
+
+    console.log("[Swalert] App ready. Fetching missed messages...");
+    await fetchMissedMessages();
+
+    console.log("[Swalert] Starting live WebSocket stream...");
     startWebSocket();
+});
+
+app.on("window-all-closed", () => {
+    // On macOS, it's common to keep apps alive in tray, but let's exit cleanly for now.
+    if (process.platform !== "darwin") app.quit();
+});
+
+app.on("activate", () => {
+    // Re-create a window if clicked on dock icon (macOS)
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
