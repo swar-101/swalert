@@ -66,6 +66,16 @@
     background: var(--alert-hover-bg);
 }
 
+.alert-card a {
+    color: #52AEFF;
+    /*text-decoration: none; !* optional, removes underline *!*/
+    font-weight: 500; /* optional, adds slight emphasis */
+}
+
+.alert-card a:hover {
+    text-decoration: underline; /* optional, adds hover flair */
+}
+
 /* Meta (timestamp + source line) */
 .alert-group .meta {
     position: absolute;
