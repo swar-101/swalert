@@ -16,7 +16,8 @@ app.whenReady().then(async () => {
     mainWindow = createMainWindow();
     setupTray(mainWindow);
 
-    console.log(`[Swalert] Database ready with ${getMessagesDB().length} records.`);
+    const messages = await getMessagesDB();
+    console.log(`[Swalert] Database ready with ${messages.length} records.`);
     console.log('[Swalert Dev] Press Ctrl + Shift + R to reload UI');
 
 
